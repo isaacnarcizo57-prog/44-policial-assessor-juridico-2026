@@ -1,0 +1,183 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required, immutable)
+    //   - displayName: string (optional)
+    //   - email: string (required, format: email)
+    //   - photoURL: string (optional)
+    //   - role: string (enum: ["admin", "user"])
+    //   - createdAt: timestamp (optional)
+    //
+    // Collection: contacts
+    // Document ID: {contactId}
+    // Fields:
+    //   - name: string (required)
+    //   - email: string (optional)
+    //   - phone: string (optional)
+    //   - company: string (optional)
+    //   - status: string (enum: ["lead", "customer", "archived"])
+    //   - ownerId: string (required, immutable)
+    //
+    // Collection: deals
+    // Document ID: {dealId}
+    // Fields:
+    //   - title: string (required)
+    //   - value: number (required)
+    //   - stage: string (enum: ["prospecting", "negotiation", "closed-won", "closed-lost"])
+    //   - contactId: string (optional)
+    //   - ownerId: string (required, immutable)
+    //
+    // Collection: tasks
+    // Document ID: {taskId}
+    // Fields:
+    //   - title: string (required)
+    //   - description: string (optional)
+    //   - dueDate: timestamp (optional)
+    //   - completed: bool (optional)
+    //   - ownerId: string (required, immutable)
+    //
+    // Collection: occurrences
+    // Document ID: {occurrenceId}
+    // Fields:
+    //   - id: string (optional)
+    //   - category: string (required)
+    //   - location: string (required)
+    //   - narrative: string (required)
+    //   - involvedPersons: list (optional)
+    //   - evidence: list (optional)
+    //   - status: string (enum: ["pending", "investigating", "resolved"])
+    //   - ownerId: string (required, immutable)
+    //   - createdAt: timestamp (optional)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.ownerId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "isaacnarcizo57@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'email']) &&
+             data.uid is string &&
+             data.email is string && isValidEmail(data.email) &&
+             (!('role' in data) || data.role in ['admin', 'user']);
+    }
+
+    function isValidContact(data) {
+      return hasRequiredFields(['name', 'ownerId']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.ownerId is string &&
+             (!('email' in data) || isValidEmail(data.email)) &&
+             (!('status' in data) || data.status in ['lead', 'customer', 'archived']);
+    }
+
+    function isValidDeal(data) {
+      return hasRequiredFields(['title', 'value', 'stage', 'ownerId']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.value is number && data.value >= 0 &&
+             data.stage in ['prospecting', 'negotiation', 'closed-won', 'closed-lost'] &&
+             data.ownerId is string;
+    }
+
+    function isValidTask(data) {
+      return hasRequiredFields(['title', 'ownerId']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.ownerId is string &&
+             (!('completed' in data) || data.completed is bool);
+    }
+
+    function isValidOccurrence(data) {
+      return hasRequiredFields(['category', 'location', 'narrative', 'ownerId']) &&
+             data.category is string &&
+             data.location is string && data.location.size() > 0 && data.location.size() < 500 &&
+             data.narrative is string && data.narrative.size() > 0 && data.narrative.size() < 5000 &&
+             data.ownerId is string &&
+             (!('status' in data) || data.status in ['pending', 'investigating', 'resolved']) &&
+             (!('involvedPersons' in data) || data.involvedPersons is list) &&
+             (!('evidence' in data) || data.evidence is list);
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == 'user' || isAdmin());
+      allow update: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /contacts/{contactId} {
+      allow read: if isAuthenticated() && (isDocOwner() || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid && isValidContact(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidContact(request.resource.data) && (request.resource.data.ownerId == resource.data.ownerId || isAdmin());
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+
+    match /deals/{dealId} {
+      allow read: if isAuthenticated() && (isDocOwner() || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid && isValidDeal(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidDeal(request.resource.data) && (request.resource.data.ownerId == resource.data.ownerId || isAdmin());
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated() && (isDocOwner() || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid && isValidTask(request.resource.data);
+      allow update: if isAuthenticated() && isDocOwner() && isValidTask(request.resource.data) && (request.resource.data.ownerId == resource.data.ownerId || isAdmin());
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+
+    match /occurrences/{occurrenceId} {
+      allow read: if isAuthenticated() && (isDocOwner() || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid && isValidOccurrence(request.resource.data);
+      allow update: if isAuthenticated() && (isDocOwner() || isAdmin()) && isValidOccurrence(request.resource.data) && (request.resource.data.ownerId == resource.data.ownerId || isAdmin());
+      allow delete: if isAuthenticated() && (isDocOwner() || isAdmin());
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

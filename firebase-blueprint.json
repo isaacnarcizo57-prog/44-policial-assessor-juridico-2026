@@ -1,0 +1,114 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique identifier for the user." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "photoURL": { "type": "string", "description": "The user's profile photo URL." },
+        "role": { "type": "string", "enum": ["admin", "user"], "description": "The user's role in the system." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the user profile was created." }
+      },
+      "required": ["uid", "email"]
+    },
+    "Contact": {
+      "title": "Contact",
+      "description": "A customer or lead contact.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "company": { "type": "string" },
+        "status": { "type": "string", "enum": ["lead", "customer", "archived"] },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "ownerId"]
+    },
+    "Deal": {
+      "title": "Deal",
+      "description": "A sales opportunity or contract.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "value": { "type": "number" },
+        "stage": { "type": "string", "enum": ["prospecting", "negotiation", "closed-won", "closed-lost"] },
+        "contactId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "value", "stage", "ownerId"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A to-do item or patrol action.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "completed": { "type": "boolean" },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "ownerId"]
+    },
+    "Occurrence": {
+      "title": "Occurrence",
+      "description": "A security incident report.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the occurrence." },
+        "category": { "type": "string", "description": "Category of the incident." },
+        "location": { "type": "string", "description": "Location of the incident." },
+        "narrative": { "type": "string", "description": "Detailed description of the incident." },
+        "involvedPersons": { 
+          "type": "array", 
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "role": { "type": "string" },
+              "details": { "type": "string" }
+            }
+          }
+        },
+        "evidence": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["pending", "investigating", "resolved"] },
+        "ownerId": { "type": "string", "description": "UID of the user who created the report." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["category", "location", "narrative", "ownerId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile data."
+    },
+    "/contacts/{contactId}": {
+      "schema": "Contact",
+      "description": "Customer contact data."
+    },
+    "/deals/{dealId}": {
+      "schema": "Deal",
+      "description": "Sales deal data."
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Task and to-do data."
+    },
+    "/occurrences/{occurrenceId}": {
+      "schema": "Occurrence",
+      "description": "Security incident reports."
+    }
+  }
+}

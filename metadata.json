@@ -1,0 +1,8 @@
+{
+  "name": "44 POLICIAL - Módulo de Redação",
+  "description": "Sistema estruturado para coleta de dados e geração de Histórico de Ocorrência da Brigada Militar.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
