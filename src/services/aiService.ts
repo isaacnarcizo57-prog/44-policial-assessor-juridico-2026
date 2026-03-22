@@ -3,14 +3,19 @@ import { GoogleGenAI } from "@google/genai";
 export const aiService = {
   analyzeLegalOccurrence: async (rawNarrative: string): Promise<string> => {
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        console.error("GEMINI_API_KEY is missing");
-        return "Erro: Chave de API não configurada.";
+      // Robust API Key access for both Dev and Production environments
+      const apiKey = process.env.GEMINI_API_KEY || 
+                     (import.meta as any).env?.VITE_GEMINI_API_KEY || 
+                     (import.meta as any).env?.GEMINI_API_KEY;
+      
+      if (!apiKey || apiKey === 'undefined' || apiKey === '') {
+        console.error("GEMINI_API_KEY is missing in this environment");
+        return "Erro: Chave de comunicação (API KEY) não encontrada. Por favor, verifique se a chave está configurada nas 'Settings' do projeto e realize um novo Deploy.";
       }
 
       const ai = new GoogleGenAI({ apiKey });
-
+      
+      // Using gemini-3.1-flash-lite-preview for maximum stability in published environments
       const prompt = `Função:
 Você é um Assessor Jurídico-Operacional da Brigada Militar do Rio Grande do Sul, com conhecimento profundo e atualizado em toda a legislação brasileira, jurisprudência dos tribunais superiores e Procedimentos Operacionais Padrão.
 
@@ -46,14 +51,20 @@ FORMATO DA RESPOSTA (obrigatório):
 ### 4️⃣ NOVO HISTÓRICO POLICIAL SUGERIDO (Pronto para o BM-MOB)`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview", 
+        model: "gemini-3.1-flash-lite-preview", 
         contents: prompt,
       });
 
       return response.text || "Não foi possível gerar a análise.";
     } catch (error) {
       console.error("Legal Analysis Error Details:", error);
-      return `Erro ao processar análise jurídica: ${error instanceof Error ? error.message : 'Erro desconhecido'}`;
+      const errorMsg = error instanceof Error ? error.message : 'Erro desconhecido';
+      
+      if (errorMsg.includes("403") || errorMsg.includes("FORBIDDEN")) {
+        return "ERRO DE PERMISSÃO (403): A chave de API não tem autorização para este modelo ou a API Generative Language não está ativa no seu projeto Google Cloud. Verifique as configurações e tente novamente.";
+      }
+      
+      return `Erro ao processar análise jurídica: ${errorMsg}. Verifique a cota de uso ou instabilidade na rede.`;
     }
   },
 
