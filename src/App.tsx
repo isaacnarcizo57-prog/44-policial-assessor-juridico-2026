@@ -388,11 +388,11 @@ function AppContent() {
                   <textarea
                     value={legalAnalysisResult}
                     onChange={(e) => setLegalAnalysisResult(e.target.value)}
-                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-xs leading-relaxed text-slate-700 font-mono min-h-[200px] outline-none focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all resize-y uppercase"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs leading-relaxed text-slate-300 font-mono min-h-[200px] outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-y uppercase"
                     placeholder="O PARECER JURÍDICO APARECERÁ AQUI..."
                   />
                   <div className="absolute bottom-4 right-4 opacity-30 group-hover:opacity-100 transition-opacity pointer-events-none">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Modo Edição Ativo</p>
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Modo Edição Ativo</p>
                   </div>
                 </div>
 
